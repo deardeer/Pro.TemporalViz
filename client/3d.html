@@ -1,0 +1,276 @@
+<head>
+    <!-- Load plotly.js into the DOM -->
+    <script src="./lib/jquery.js"></script>
+    <script src='./lib/plotly-1.5.0.min.js'></script>
+    <script src="./lib/d3.v5.min.js"></script>
+    <script src="./lib/lurlquery.js"></script>
+    <script src="./lib/drawfun.js"></script>
+</head>
+
+<style>
+
+    .inline {
+        display: inline-block;
+        border: 1px solid gray; 
+        margin:10px;
+        width: 200px;
+        height: 200px;
+    }
+
+    .view2D{
+        width: 500px;
+        height: 500px;
+    }
+ 
+</style>
+
+<body>
+
+    <button onclick="loadData()">Load Data</button>
+    <button onclick="changeData()">Change</button>
+    <button onclick='updatePCA()'>Update</button>
+    <br>
+
+    <h4>origin & transformed data</h4>
+    <div id='div3D' class="inline"></div>
+    <div id='div3D_T' class="inline"></div>
+    <div id='div3D_M' class="inline"></div>
+    <div id='div3D_S' class="inline"></div>
+
+    <h4>PCA</h4>
+    <div id="div2D" class="inline view2D"></div>
+    <div id="div2D_Data" class="inline view2D"></div>
+    <div id="div2D_D" class="inline view2D"></div>
+    <div id="div2D_S" class="inline view2D"></div>
+    <div id="div2D_T" class="inline view2D"></div>
+    <div id="div2D_M" class="inline view2D"></div>
+
+</body>
+
+<script>
+    function loadData(){
+        console.log('load data');
+        // var lSendUrl = function(PostType, Url, formData, successPaperState, self)
+        var formData = new FormData();
+        lSendUrl('POST', 'http://localhost:30001/getOData', formData, successGetData)
+    }
+
+    function computeProjection(norVec_balance, centerPos, data){
+
+        norVec1 = getNormalVector(liAxes[0], liAxes[1])
+        norVec2 = getNormalVector(liDiffAxes[1], liDiffAxes[0])
+        sign = -1, weight = 0.1
+        norVec_balance = [norVec1[0] * (1 - weight) + sign * norVec2[0] * weight, norVec1[1] * (1 - weight) + sign * norVec2[1] * weight, norVec1[2] * (1 - weight) + sign * norVec2[2] * weight]
+        console.log('norvec', norVec1, norVec2)
+        planeData = getPlane(norVec1, [liAxes[1][0][0], liAxes[1][1][0]], [liAxes[1][0][1], liAxes[1][1][1]], centerPos, 'rgb(200, 200, 200)')
+        diffplaneData = getPlane(norVec2, [liDiffAxes[0][0][0], liDiffAxes[0][1][0]], [liDiffAxes[0][0][1], liDiffAxes[0][1][1]], centerPos, 'rgb(255, 0, 0)')
+        balancePlanData = getPlane(norVec_balance, [liDiffAxes[0][0][0], liDiffAxes[0][1][0]], [liDiffAxes[0][0][1], liDiffAxes[0][1][1]], centerPos, 'rgb(0, 255, 0)')
+       
+        //transform to balancePlane
+        var liDataTransform = []
+        var liDot_transform = []
+
+        G_liDots = liData;
+
+        var liColor = d3.schemeBlues[9]
+        for(var i = 0; i < G_liDots.length; i ++){
+            var data = G_liDots[i]
+            var transform_result = projectDots(norVec_balance, centerPos, data)
+            var dots = {}
+            dots = {
+                x: transform_result[1],
+                y: transform_result[2],
+            }
+        }
+    }
+
+    function draw3D(divId, dotsConfig, axesConfig, linesConfig, layoutConfig){
+        
+        var drawData = []
+        {//draw dots
+            var dotdata = dotsConfig['dots']
+            var liDots = []
+            var liColor = ["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"]
+            if(Object.keys(dotsConfig).indexOf('colors') != -1)
+                liColor = dotsConfig['colors']
+            for(var i = 0; i < dotdata.length; i ++){
+                strokeWidth = 5
+                color = liColor[i]
+                var dots = {
+                    x: dotdata[i][0], y:  dotdata[i][1], z:  dotdata[i][2],
+                    mode: 'markers',
+                    marker: {
+                        color: color, //'rgba(66, 69, 245, 1.)',
+                        size: 2,
+                        opacity: 0.3,
+                        line: {
+                            color: 'black',//'rgba(50, 50, 50, 0.14)',
+                            width: strokeWidth},
+                            opacity: 1
+                        },
+                    type: 'scatter3d'
+                }
+                liDots.push(dots)
+            }
+            drawData = drawData.concat(liDots)
+        }
+
+        if(Object.keys(axesConfig).indexOf('axes') != -1){//draw axes
+            var liLine = []
+            var liAxes = axesConfig['axes']
+            for(var i = 0; i < liAxes.length; i ++){
+                var mainAxis = {
+                    'x': [liAxes[i][0][0], liAxes[i][1][0]],
+                    'y': [liAxes[i][0][1], liAxes[i][1][1]],
+                    'z': [liAxes[i][0][2], liAxes[i][1][2]],
+                    mode: 'lines',
+                    line: {
+                            color: 'red',
+                            width: 5,
+                            dash: 'longdashdot'},
+                    type: 'scatter3d'
+                }
+                liLine.push(mainAxis)
+            }
+            drawData = drawData.concat(liLine)
+        }
+
+        if(Object.keys(linesConfig).indexOf('lines') != -1){//draw lines
+            var liDrawLine = []
+            var liLines = linesConfig['lines']
+         
+            for(var i = 0; i < liLines[0][0].length; i ++){
+                var littleLine = {
+                    'x': [liLines[0][0][i], liLines[1][0][i]],
+                    'y': [liLines[0][1][i], liLines[1][1][i]],
+                    'z': [liLines[0][2][i], liLines[1][2][i]],
+                    mode: 'lines',
+                    line: {
+                            color: 'gray',
+                            width: 2},
+                    type: 'scatter3d'
+                }
+                liDrawLine.push(littleLine)
+            }
+            drawData = drawData.concat(liDrawLine)
+        }
+
+        Plotly.newPlot(divId, drawData, layoutConfig);
+    }
+
+    function draw2DProjection(divId, dotsConfig, layoutConfig){
+
+        var dotdata = dotsConfig['dots']
+
+        var drawData = []
+        var liColor = ["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"]
+        if(Object.keys(dotsConfig).indexOf('colors') != -1)
+            liColor = dotsConfig['colors']
+        var drawLine = true;
+        if(Object.keys(dotsConfig).indexOf('drawLine') != -1)
+            drawLine = dotsConfig['drawLine']
+        var liName = []
+        if(Object.keys(dotsConfig).indexOf('names') != -1)
+            liName = dotsConfig['names']
+
+        var liLines = []
+        if(drawLine){
+            var timeStepN = dotdata.length
+            var dotN = dotdata[0][0].length
+            for(var i = 0; i < dotN; i ++){
+                var line = {
+                    mode: 'lines',
+                    line: {
+                        color: 'rgba(0, 0, 0, 0.5)',
+                        width: 1
+                    }
+                }
+                var xs = []
+                var ys = []
+                for(var j = 0; j < timeStepN; j ++){
+                    xs = xs.concat(dotdata[j][0][i])
+                    ys = ys.concat(dotdata[j][1][i])
+                }
+                line['x'] = xs, line['y'] = ys
+                liLines.push(line)
+            }
+        }        
+        drawData = drawData.concat(liLines)
+
+        for(var i = 0; i < dotdata.length; i ++){
+            var data = dotdata[i]
+            var dots = {
+                x: data[0],
+                y: data[1],
+                mode: 'markers',
+                marker: {
+                        color: liColor[i],
+                        // opacity: 0.3,
+                        line: {
+                        color: 'black',//'rgba(50, 50, 50, 0.14)',
+                        width: 1},
+                },
+                line: {
+                        color: 'black',//'rgba(50, 50, 50, 0.14)',
+                        width: 1},
+                opacity: 1,
+                type: 'scatter',
+                name: liName.length > i ? liName[i]: 'trace-' + String(i)
+            };             
+            drawData.push(dots)
+        }
+       
+        Plotly.newPlot(divId, drawData, layoutConfig);
+    }
+
+    function successGetData(response, self){
+
+        console.log('success get data', response)
+
+        var originDataBag = response['originDataBag']
+        var pcaBag = response['pcaBag']
+        console.log("origin data bag=", originDataBag)
+
+        var liData = originDataBag['datalist'];
+        var DataInOne = originDataBag['data']
+        var DisData = originDataBag['disdata']
+        var DataInO_tomean = originDataBag['data_tomean']
+        var DisData_tomean = originDataBag['dis_tomean']
+        var Data_Stand = originDataBag['data_stand']
+        var Dis_Stand = originDataBag['dis_stand']
+
+        var data_BasePCA = pcaBag['basePCA']
+        var data_DataPCA = pcaBag['dataPCA']
+        var data_DiffPCA = pcaBag['diffPCA']
+        var data_AllPCA = pcaBag['allPCA']
+        var data_MeanPCA = pcaBag['meanPCA']
+        var data_StdPCA = pcaBag['standPCA']
+
+        var liAxes = response['baseAxes']
+
+        console.log("time step#=", liData.length, '#dots=', liData[0][0].length)
+               
+        var dirLen = 0.5
+        console.log('#DisData=', DisData, '#DataInOne=', DataInOne)
+        console.log('#DataInO_tomean=', DataInO_tomean, '#DisData_tomean=', DisData_tomean)
+        draw3D('div3D', {'dots': liData}, {'axes': liAxes}, 
+              {}, {title:'Temporal Data', showlegend: false});
+        draw3D('div3D_T', {'dots': DataInOne[0].concat(DisData[0]), 'colors': ['red', 'blue']}, {}, 
+              {}, {title:'Data & Dis.', showlegend: false});
+        draw3D('div3D_M', {'dots': DataInO_tomean.concat(DisData_tomean), 'colors': ['red', 'blue']}, {}, 
+              {}, {title:'Mean', showlegend: false});
+        draw3D('div3D_S', {'dots': Data_Stand.concat(Dis_Stand), 'colors': ['red', 'blue']}, {}, 
+              {}, {title:'Standardlized', showlegend: false});
+
+        d3.selectAll('.inline #scene').style('height', '200px').style('width', '200px').style('left', 0).style('top', 0)
+       
+        draw2DProjection('div2D', {'dots': data_BasePCA}, {title:'Base PCA', showlegend: false})
+        draw2DProjection('div2D_Data', {'dots': data_DataPCA}, {title:'Data PCA ', showlegend: false}) 
+        draw2DProjection('div2D_D', {'dots': data_DiffPCA}, {title:'Diff PCA ', showlegend: false}) 
+        draw2DProjection('div2D_T', {'dots': data_AllPCA}, {title:'Data & Dis Considered ', showlegend: false}) 
+        draw2DProjection('div2D_M', {'dots': data_MeanPCA}, {title:'Mean ', showlegend: false}) 
+        draw2DProjection('div2D_S', {'dots': data_StdPCA}, {title:'Standardlized ', showlegend: false}) 
+     
+    }
+
+</script>
