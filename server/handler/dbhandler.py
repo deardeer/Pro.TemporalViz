@@ -9,6 +9,32 @@ import os.path
 import json
 import pandas as pd
 
+def convert(o):
+    if isinstance(o, numpy.int64): return int(o)  
+    raise TypeError
+
+
+class getPlotHandler(tornado.web.RequestHandler):
+	def post(self):
+		print(' load data suite ');
+		self.set_header('Access-Control-Allow-Origin', '*');
+
+		# filename = 'data_4_3.csv'
+		filename = 'countries_our_method_2d.csv'
+		# filename = 'countries_naive_pca_2d.csv'
+		df = pd.read_csv('../data/' + filename);
+		bound_x = [min(df['0']), max(df['0'])]
+		bound_y = [min(df['1']), max(df['1'])]
+
+		#Todo: Or : )
+			
+		return self.write({'data': df.values.tolist(), 
+		'ids': list(map(int, df['country_id'].tolist())), 
+		'steps': list(map(int, list(set(df['t'])))),
+		'drawids': [34, 78, 70, 164, 163, 147, 51, 12, 115], #fake id list by Min
+		'bound': [bound_x, bound_y]})
+
+
 class getODataHandler(tornado.web.RequestHandler):
 	
 	def computeDispaces(self, df, timeStep, nDim):
@@ -27,7 +53,7 @@ class getODataHandler(tornado.web.RequestHandler):
 		pca1.fit(data)
 		data_pca = pca1.transform(data)
 		originDot = np.mean(data,0)	
-		dirLen = 10	
+		dirLen = 40	
 		principleDir1 = pca1.components_[0]
 		principleDir2 = pca1.components_[1]
 		axis1 = [list(principleDir1 * 0.5 * dirLen + originDot), list(principleDir1 * (-0.5) * dirLen + originDot)]
@@ -35,22 +61,25 @@ class getODataHandler(tornado.web.RequestHandler):
 		print('axes12', principleDir1, principleDir2)	
 		return data_pca, pca1, list(originDot), principleDir1, principleDir2, [axis1, axis2]
 	
-	def getProjected(self, liSubDf, originDot, temp_pca):
+	def getProjected(self, liSubDf, originDot, temp_pca, nDim):
 		liTimestepPCA = []
 		align = 2
 		for i in range(len(liSubDf)):
 			df_timestep = liSubDf[i]
 			timestep_pca = np.array((df_timestep.values - originDot) * np.linalg.inv(np.matrix(temp_pca.components_)))
-			if(align == 0):
-				constantList = np.zeros(len(list(timestep_pca[:,0]))) + np.random.random(len(list(timestep_pca[:,0]))) * 2
-				constantList = constantList + 10 * i
-				liTimestepPCA.append([list(constantList), list(timestep_pca[:,1])])
-			elif(align == 1):
-				xList = timestep_pca[:,0]/6 + 10 * i 
-				liTimestepPCA.append([list(xList), list(timestep_pca[:,1])])
-			else:
-				liTimestepPCA.append([list(timestep_pca[:,0]), list(timestep_pca[:,1])])
-	
+			if(nDim == 2):
+				if(align == 0):
+					constantList = np.zeros(len(list(timestep_pca[:,0]))) + np.random.random(len(list(timestep_pca[:,0]))) * 2
+					constantList = constantList + 10 * i
+					liTimestepPCA.append([list(constantList), list(timestep_pca[:,1])])
+				elif(align == 1):
+					xList = timestep_pca[:,0]/6 + 10 * i 
+					liTimestepPCA.append([list(xList), list(timestep_pca[:,1])])
+				else:
+					liTimestepPCA.append([list(timestep_pca[:,0]), list(timestep_pca[:,1])])
+			elif(nDim == 3):
+					liTimestepPCA.append([list(timestep_pca[:,0]), list(timestep_pca[:,1]), list(timestep_pca[:, 2])])
+
 		return liTimestepPCA
 
 	def post(self):
@@ -118,35 +147,40 @@ class getODataHandler(tornado.web.RequestHandler):
 		df_all = pd.DataFrame(columns=range(nDim))
 		df_all = pd.concat([df_data_concate, df_dis_concate],axis=0,ignore_index=True)
 
+		#by Base 3D PCA
+		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(liSubDf[0])
+		pcaBag['base3DPCA'] = self.getProjected(liSubDf, np.mean(liSubDf[0].values, 0), temp_pca, 3)
+		
+
 		#by Base PCA
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(liSubDf[0])
-		pcaBag['basePCA'] = self.getProjected(liSubDf, np.mean(liSubDf[0].values, 0), temp_pca)
+		pcaBag['basePCA'] = self.getProjected(liSubDf, np.mean(liSubDf[0].values, 0), temp_pca, 2)
 		print('here???', temp_data)
 
 		#by all data
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(df_data_concate)
-		pcaBag['dataPCA'] = self.getProjected(liSubDf, np.mean(df_data_concate.values, 0), temp_pca)
+		pcaBag['dataPCA'] = self.getProjected(liSubDf, np.mean(df_data_concate.values, 0), temp_pca, 2)
 
 		#by diff
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(df_dis_concate)
-		pcaBag['diffPCA'] = self.getProjected(liSubDf, np.mean(df_dis_concate.values, 0), temp_pca)
+		pcaBag['diffPCA'] = self.getProjected(liSubDf, np.mean(df_dis_concate.values, 0), temp_pca, 2)
 
 		#by All-considered (Dis, Data) PCA
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(df_all)
 		print('all=', df_all.head(), len(df_all), temp_pca.components_)
-		pcaBag['allPCA'] = self.getProjected(liSubDf, np.mean(df_all.values, 0), temp_pca)
+		pcaBag['allPCA'] = self.getProjected(liSubDf, np.mean(df_all.values, 0), temp_pca, 2)
 
 		#by tomean 
 		df_all_mean = pd.concat([df_data_c_mean, df_dis_c_mean])
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(df_all_mean)
 		print('mean=', df_all_mean.head(), len(df_all_mean), temp_pca.components_)
-		pcaBag['meanPCA'] = self.getProjected(liSubDf, np.mean(df_all_mean.values, 0), temp_pca)
+		pcaBag['meanPCA'] = self.getProjected(liSubDf, np.mean(df_all_mean.values, 0), temp_pca, 2)
 
 		#by standard
 		df_all_stand = pd.concat([df_data_c_std, df_dis_c_std])
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(df_all_stand)
 		print('std=', df_all_stand.head(), len(df_all_stand), temp_pca.components_)
-		pcaBag['standPCA'] = self.getProjected(liSubDf, np.mean(df_all_stand.values, 0), temp_pca)
+		pcaBag['standPCA'] = self.getProjected(liSubDf, np.mean(df_all_stand.values, 0), temp_pca, 2)
 
 		#sum-displacement
 		Condis_pca, Condispca, ConoriginDot_dis, ConpDir1_dis, ConpDir2_dis, CondisAxes = self.getPCA(df_all)

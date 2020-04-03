@@ -239,6 +239,7 @@
         var Data_Stand = originDataBag['data_stand']
         var Dis_Stand = originDataBag['dis_stand']
 
+        var data_base3DPCA = pcaBag['base3DPCA']
         var data_BasePCA = pcaBag['basePCA']
         var data_DataPCA = pcaBag['dataPCA']
         var data_DiffPCA = pcaBag['diffPCA']
@@ -255,8 +256,8 @@
         console.log('#DataInO_tomean=', DataInO_tomean, '#DisData_tomean=', DisData_tomean)
         draw3D('div3D', {'dots': liData}, {'axes': liAxes}, 
               {}, {title:'Temporal Data', showlegend: false});
-        draw3D('div3D_T', {'dots': DataInOne[0].concat(DisData[0]), 'colors': ['red', 'blue']}, {}, 
-              {}, {title:'Data & Dis.', showlegend: false});
+        draw3D('div3D_T', {'dots': data_base3DPCA}, {}, 
+              {}, {title:'Transform to Base', showlegend: false});
         draw3D('div3D_M', {'dots': DataInO_tomean.concat(DisData_tomean), 'colors': ['red', 'blue']}, {}, 
               {}, {title:'Mean', showlegend: false});
         draw3D('div3D_S', {'dots': Data_Stand.concat(Dis_Stand), 'colors': ['red', 'blue']}, {}, 
