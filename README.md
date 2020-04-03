@@ -10,4 +10,4 @@ To run it:
 
 ```python server.py``` 
 
-3. open ./client/3d.html
+3. open ./client/plot.html in your browser
