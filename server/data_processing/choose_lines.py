@@ -2,9 +2,10 @@ import os
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 COORDINATES_COLUMNS = ['0', '1']
-
+# COORDINATES_COLUMNS = [0, 1]
 
 def get_lines_distance(line1_p1, line1_p2, line2_p1, line2_p2):
     line1_p1 = np.array(line1_p1)
@@ -20,12 +21,15 @@ def get_all_lines_distances(indices, df1, df2, cache_name=None):
     save_cache = False
     if cache_name:
         if os.path.exists(f"data_processing/cache/{cache_name}.csv"):
+            print(f"For choosing strokes, distances are loaded from cahce file 'data_processing/cache/{cache_name}.csv'")
             distances_df = pd.read_csv(f"data_processing/cache/{cache_name}.csv")
             return distances_df
         else:
             save_cache = True
     distances = {}
-    for i in indices:
+
+    print("For choosing strokes, calculating distances")
+    for i in tqdm(indices):
         for j in indices:
             if i == j:
                 continue

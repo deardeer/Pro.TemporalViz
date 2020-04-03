@@ -10,6 +10,8 @@ import json
 import pandas as pd
 
 from data_processing.choose_lines import get_lines_indices_to_show
+from data_processing.data_loaders import get_data
+from data_processing.dimensional_reduction import t_pca, pca
 
 
 def convert(o):
@@ -19,22 +21,35 @@ def convert(o):
 
 class getPlotHandler(tornado.web.RequestHandler):
 	def post(self):
-		print(' load data suite ');
 		self.set_header('Access-Control-Allow-Origin', '*');
 
-		# filename = 'data_4_3.csv'
-		filename = 'countries_our_method_2d.csv'
-		# filename = 'countries_naive_pca_2d.csv'
-		df = pd.read_csv('../data/' + filename);
-		bound_x = [min(df['0']), max(df['0'])]
-		bound_y = [min(df['1']), max(df['1'])]
+		dataset = "coronavirus_us"  # options: countries, coronavirus_china, coronavirus_us
+		dimensional_reduction = "t_pca"  # options: t_pca, pca
 
-		lines_indices_to_show = get_lines_indices_to_show(df, distances_cache_name="countries_distances_cache",
+		print(f"dataset={dataset}, method={dimensional_reduction}")
+		print(f"Loading Data...")
+		if os.path.exists(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv"):
+			print(f"Data is loaded from cache file 'data_processing/cache/{dimensional_reduction}_{dataset}.csv'")
+			data2d = pd.read_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv")
+		elif dimensional_reduction == "t_pca":
+			data_by_step, diffs_between_steps = get_data(dataset)
+			data2d = t_pca(data_by_step, diffs_between_steps, translation_factor=10)
+			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+		else:  # dimensional_reduction is pca
+			data_by_step, _ = get_data(dataset)
+			data2d = pca(data_by_step)
+			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+
+		bound_x = [min(data2d['0']), max(data2d['0'])]
+		bound_y = [min(data2d['1']), max(data2d['1'])]
+
+		print("Choose Strokes Indices...")
+		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
 																		dist_threshold=0.05)
 
-		return self.write({'data': df.values.tolist(),
-		'ids': list(map(int, df['item'].tolist())),
-		'steps': list(map(int, list(set(df['t'])))),
+		return self.write({'data': data2d.values.tolist(),
+		'ids': list(map(int, data2d['item'].tolist())),
+		'steps': list(map(int, list(set(data2d['t'])))),
 		'drawids': list(map(int, lines_indices_to_show)),
 		'bound': [bound_x, bound_y]})
 
