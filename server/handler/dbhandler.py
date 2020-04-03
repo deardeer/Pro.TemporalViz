@@ -9,8 +9,11 @@ import os.path
 import json
 import pandas as pd
 
+from data_processing.choose_lines import get_lines_indices_to_show
+
+
 def convert(o):
-    if isinstance(o, numpy.int64): return int(o)  
+    if isinstance(o, np.int64): return int(o)
     raise TypeError
 
 
@@ -26,17 +29,18 @@ class getPlotHandler(tornado.web.RequestHandler):
 		bound_x = [min(df['0']), max(df['0'])]
 		bound_y = [min(df['1']), max(df['1'])]
 
-		#Todo: Or : )
-			
-		return self.write({'data': df.values.tolist(), 
-		'ids': list(map(int, df['country_id'].tolist())), 
+		lines_indices_to_show = get_lines_indices_to_show(df, distances_cache_name="countries_distances_cache",
+																		dist_threshold=0.05)
+
+		return self.write({'data': df.values.tolist(),
+		'ids': list(map(int, df['item'].tolist())),
 		'steps': list(map(int, list(set(df['t'])))),
-		'drawids': [34, 78, 70, 164, 163, 147, 51, 12, 115], #fake id list by Min
+		'drawids': list(map(int, lines_indices_to_show)),
 		'bound': [bound_x, bound_y]})
 
 
 class getODataHandler(tornado.web.RequestHandler):
-	
+
 	def computeDispaces(self, df, timeStep, nDim):
 		data = {}
 		for i in range(1, timeStep):
@@ -52,15 +56,15 @@ class getODataHandler(tornado.web.RequestHandler):
 		pca1 = decomposition.PCA(n_components=3)
 		pca1.fit(data)
 		data_pca = pca1.transform(data)
-		originDot = np.mean(data,0)	
-		dirLen = 40	
+		originDot = np.mean(data,0)
+		dirLen = 40
 		principleDir1 = pca1.components_[0]
 		principleDir2 = pca1.components_[1]
 		axis1 = [list(principleDir1 * 0.5 * dirLen + originDot), list(principleDir1 * (-0.5) * dirLen + originDot)]
-		axis2 = [list(principleDir2 * 0.3 * dirLen + originDot), list(principleDir2 * (-0.3) * dirLen + originDot)]	
-		print('axes12', principleDir1, principleDir2)	
+		axis2 = [list(principleDir2 * 0.3 * dirLen + originDot), list(principleDir2 * (-0.3) * dirLen + originDot)]
+		print('axes12', principleDir1, principleDir2)
 		return data_pca, pca1, list(originDot), principleDir1, principleDir2, [axis1, axis2]
-	
+
 	def getProjected(self, liSubDf, originDot, temp_pca, nDim):
 		liTimestepPCA = []
 		align = 2
@@ -73,7 +77,7 @@ class getODataHandler(tornado.web.RequestHandler):
 					constantList = constantList + 10 * i
 					liTimestepPCA.append([list(constantList), list(timestep_pca[:,1])])
 				elif(align == 1):
-					xList = timestep_pca[:,0]/6 + 10 * i 
+					xList = timestep_pca[:,0]/6 + 10 * i
 					liTimestepPCA.append([list(xList), list(timestep_pca[:,1])])
 				else:
 					liTimestepPCA.append([list(timestep_pca[:,0]), list(timestep_pca[:,1])])
@@ -100,14 +104,14 @@ class getODataHandler(tornado.web.RequestHandler):
 
 		originDataBag = {}
 		pcaBag = {}
-				
+
 		for i in range(timeStep):
 			data_TS = []
 			for j in range(nDim):
 				data_TS.append(list(df['x_'+str(i)+'_'+str(j)]))
 			liData.append(data_TS)
 		originDataBag['datalist'] = liData
-		
+
 		#base
 		basedf = df[df.columns[0:nDim]]
 		basedf_pca, bpca, originDot, pDir1, pDir2, axes = self.getPCA(basedf)
@@ -143,14 +147,14 @@ class getODataHandler(tornado.web.RequestHandler):
 		df_dis_c_std = df_dis_c_mean / max(np.std(df_dis_concate.values,0))
 		temp = df_dis_c_std.values
 		originDataBag['dis_stand'] = [[list(temp[:,0]), list(temp[:,1]), list(temp[:,2])]]
-				
+
 		df_all = pd.DataFrame(columns=range(nDim))
 		df_all = pd.concat([df_data_concate, df_dis_concate],axis=0,ignore_index=True)
 
 		#by Base 3D PCA
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(liSubDf[0])
 		pcaBag['base3DPCA'] = self.getProjected(liSubDf, np.mean(liSubDf[0].values, 0), temp_pca, 3)
-		
+
 
 		#by Base PCA
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(liSubDf[0])
@@ -170,7 +174,7 @@ class getODataHandler(tornado.web.RequestHandler):
 		print('all=', df_all.head(), len(df_all), temp_pca.components_)
 		pcaBag['allPCA'] = self.getProjected(liSubDf, np.mean(df_all.values, 0), temp_pca, 2)
 
-		#by tomean 
+		#by tomean
 		df_all_mean = pd.concat([df_data_c_mean, df_dis_c_mean])
 		temp_data, temp_pca, temp_center, temp_dir1, temp_dir2, temp_axes = self.getPCA(df_all_mean)
 		print('mean=', df_all_mean.head(), len(df_all_mean), temp_pca.components_)
@@ -191,13 +195,13 @@ class getODataHandler(tornado.web.RequestHandler):
 
 		#balanced PCA
 		balanceComponents = Condispca.components_
-		
+
 		data_originpca = np.array((df_data_concate.values - np.mean(df_all.values, 0)) * np.linalg.inv(np.matrix(balanceComponents)))
 		diff_originpca = np.array((df_dis_concate.values - np.mean(df_all.values, 0)) * np.linalg.inv(np.matrix(balanceComponents)))
-		
+
 		# print('#data=',len(df_data_concate), '#dif=', len(df_dis_concate), '#all=', len(df_all))
 		liTimestepPCA_Origin = [[list(data_originpca[:,0]), list(data_originpca[:,1])], [list(diff_originpca[:,0]), list(diff_originpca[:,1])]]
-		
+
 		self.write({
 			'originDataBag': originDataBag,
 			'pcaBag': pcaBag,
