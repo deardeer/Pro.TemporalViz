@@ -29,12 +29,12 @@
     loadData()
 
     //rainbow style
-    // var Rcolor = d3.interpolateRainbow;
+    var Rcolor = d3.interpolateRainbow;
     //single tone style
-    Rcolor = d3.scaleLinear()
-               .domain([0, 1])
-               .range(['white', d3.schemeOrRd[9][5]]) //Rcolor(1)])
-               .interpolate(d3.interpolateHcl)
+    // Rcolor = d3.scaleLinear()
+    //            .domain([0, 1])
+    //            .range(['white', d3.schemeOrRd[9][5]]) //Rcolor(1)])
+    //            .interpolate(d3.interpolateHcl)
 
     var path = d3.select("path").remove();
    

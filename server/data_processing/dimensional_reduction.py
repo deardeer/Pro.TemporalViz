@@ -39,3 +39,19 @@ def data2d_to_df(data_array, num_steps, amount_data_per_step):
 	data2d_df.insert(loc=0, column='item', value=data2d_df.index)
 	data2d_df.columns = data2d_df.columns.astype(str)
 	return data2d_df
+
+
+def get_translation_factor(data_by_step):
+	data = np.concatenate(data_by_step)
+	max_coors = data.max(axis=0)
+	min_coors = data.min(axis=0)
+	diffs = max_coors - min_coors
+	r = diffs.max()
+	mean_dist = get_mean_dist(data_by_step)
+	alpha = r / mean_dist if r < 1 else r
+	return alpha
+
+
+def get_mean_dist(data_by_step):
+	diffs = data_by_step[-1] - data_by_step[0]
+	return np.abs(diffs.mean())

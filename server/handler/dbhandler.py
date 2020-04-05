@@ -11,7 +11,7 @@ import pandas as pd
 
 from data_processing.choose_lines import get_lines_indices_to_show
 from data_processing.data_loaders import get_data
-from data_processing.dimensional_reduction import t_pca, pca
+from data_processing.dimensional_reduction import t_pca, pca, get_translation_factor
 
 
 def convert(o):
@@ -23,7 +23,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 	def post(self):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
-		dataset = "coronavirus_us"  # options: countries, coronavirus_china, coronavirus_us
+		dataset = "countries"  # options: countries, coronavirus_china, coronavirus_us
 		dimensional_reduction = "t_pca"  # options: t_pca, pca
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
@@ -33,7 +33,8 @@ class getPlotHandler(tornado.web.RequestHandler):
 			data2d = pd.read_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv")
 		elif dimensional_reduction == "t_pca":
 			data_by_step, diffs_between_steps = get_data(dataset)
-			data2d = t_pca(data_by_step, diffs_between_steps, translation_factor=10)
+			translation_factor = get_translation_factor(data_by_step)
+			data2d = t_pca(data_by_step, diffs_between_steps, translation_factor=translation_factor)
 			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
 		else:  # dimensional_reduction is pca
 			data_by_step, _ = get_data(dataset)
@@ -44,8 +45,9 @@ class getPlotHandler(tornado.web.RequestHandler):
 		bound_y = [min(data2d['1']), max(data2d['1'])]
 
 		print("Choose Strokes Indices...")
+		dist_threshold = 0.05 if dataset == "countries" else 50
 		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
-																		dist_threshold=0.05)
+																		dist_threshold=dist_threshold)
 
 		return self.write({'data': data2d.values.tolist(),
 		'ids': list(map(int, data2d['item'].tolist())),

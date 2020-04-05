@@ -1,9 +1,15 @@
 import pandas as pd
 import numpy as np
+import os
+
+
+data_dir_prefix = os.path.dirname(os.path.realpath(__file__)).split("Pro.TemporalViz")[0]
+data_dir_prefix = os.path.join(data_dir_prefix, "Pro.TemporalViz", "data")
 
 
 def coronavirus_data(filter_options, time_step_indices, china=False):
-	data = pd.read_csv("../data/raw/time_series_covid_19_confirmed.csv")
+	data = pd.read_csv(os.path.join(data_dir_prefix, "raw/time_series_covid_19_confirmed.csv"))
+
 	for key in filter_options:
 		data = data[data[key] == filter_options[key]]
 
@@ -11,8 +17,8 @@ def coronavirus_data(filter_options, time_step_indices, china=False):
 	data = data[["Province/State", "Lat", "Long"] + list(time_steps[time_step_indices])]
 
 	if china:
-		data_move_in_from_hubei = pd.read_csv("../data/raw/china_ratio_from_Hubei.csv")
-		data_move_in = pd.read_csv("../data/raw/china_ratio_movein.csv")
+		data_move_in_from_hubei = pd.read_csv(os.path.join(data_dir_prefix, "raw/china_ratio_from_Hubei.csv"))
+		data_move_in = pd.read_csv(os.path.join(data_dir_prefix, "raw/china_ratio_movein.csv"))
 		data_move_in_from_hubei = data_move_in_from_hubei[["Province/State"] + list(time_steps[time_step_indices])]
 		data_move_in = data_move_in[["Province/State"] + list(time_steps[time_step_indices])]
 
@@ -37,7 +43,7 @@ def coronavirus_data(filter_options, time_step_indices, china=False):
 
 
 def population_data(years):
-	data = pd.read_csv("../data/raw/population_measurments.csv")
+	data = pd.read_csv(os.path.join(data_dir_prefix, "raw/population_measurments.csv"))
 	data = data[["Country", "Year", "Population", "LifeExp", "GDP"]]
 	for i, year in enumerate(years):
 		data.loc[data.index[data.Year == year], "Year"] = int(i)

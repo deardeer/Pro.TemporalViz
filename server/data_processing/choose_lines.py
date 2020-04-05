@@ -7,6 +7,9 @@ from tqdm import tqdm
 COORDINATES_COLUMNS = ['0', '1']
 # COORDINATES_COLUMNS = [0, 1]
 
+data_processing_dir_prefix = os.path.dirname(os.path.realpath(__file__)).split("Pro.TemporalViz")[0]
+data_processing_dir_prefix = os.path.join(data_processing_dir_prefix, "Pro.TemporalViz", "server/data_processing")
+
 def get_lines_distance(line1_p1, line1_p2, line2_p1, line2_p2):
     line1_p1 = np.array(line1_p1)
     line1_p2 = np.array(line1_p2)
@@ -20,9 +23,9 @@ def get_lines_distance(line1_p1, line1_p2, line2_p1, line2_p2):
 def get_all_lines_distances(indices, df1, df2, cache_name=None):
     save_cache = False
     if cache_name:
-        if os.path.exists(f"data_processing/cache/{cache_name}.csv"):
+        if os.path.exists(os.path.join(data_processing_dir_prefix, f"cache/{cache_name}.csv")):
             print(f"For choosing strokes, distances are loaded from cahce file 'data_processing/cache/{cache_name}.csv'")
-            distances_df = pd.read_csv(f"data_processing/cache/{cache_name}.csv")
+            distances_df = pd.read_csv(os.path.join(data_processing_dir_prefix, f"cache/{cache_name}.csv"))
             return distances_df
         else:
             save_cache = True
@@ -41,7 +44,7 @@ def get_all_lines_distances(indices, df1, df2, cache_name=None):
             distances[(i, j)] = distance_i_j
     distances_df = pd.DataFrame([[k[0], k[1], distances[k]] for k in distances], columns=["i", "j", "dist"])
     if save_cache:
-        distances_df.to_csv(f"data_processing/cache/{cache_name}.csv")
+        distances_df.to_csv(os.path.join(data_processing_dir_prefix, f"cache/{cache_name}.csv"))
     return distances_df
 
 
@@ -68,7 +71,7 @@ def get_lines_lengths(df1, df2, item_indices=None):
 
 
 def to_show_line(num_neighbors, length):
-    prob = length / 2 * (num_neighbors + 1)
+    prob = np.log(length + 1) / (2 * (num_neighbors + 0.1))
     prob = np.minimum(1, prob)
     to_show = np.random.binomial(1, prob)
     return to_show == 1
