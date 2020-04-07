@@ -53,5 +53,5 @@ def get_translation_factor(data_by_step):
 
 
 def get_mean_dist(data_by_step):
-	diffs = data_by_step[-1] - data_by_step[0]
-	return np.abs(diffs.mean())
+	diffs = np.abs(data_by_step[-1] - data_by_step[0])
+	return diffs.mean()
