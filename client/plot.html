@@ -10,7 +10,7 @@
 
 <body>
     <div>
-        <svg id='mysvg' style="width: 600px; height: 600px; margin: 100px; border: solid 0.5px">
+        <svg id='mysvg' style="width: 1200px; height: 600px; margin: 100px; border: solid 1px"> 
             <defs>
                 <linearGradient id="orange_red" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" style="stop-color:rgb(255, 251, 9);
@@ -31,10 +31,10 @@
     //rainbow style
     var Rcolor = d3.interpolateRainbow;
     //single tone style
-    // Rcolor = d3.scaleLinear()
-    //            .domain([0, 1])
-    //            .range(['white', d3.schemeOrRd[9][5]]) //Rcolor(1)])
-    //            .interpolate(d3.interpolateHcl)
+    Rcolor = d3.scaleLinear()
+               .domain([0, 1])
+               .range(['white', d3.schemeOrRd[9][5]]) //Rcolor(1)])
+               .interpolate(d3.interpolateHcl)
 
     var path = d3.select("path").remove();
    
@@ -59,14 +59,15 @@
 
         liSelectIds = drawids; //[34, 78, 70, 164, 163, 147, 51, 12, 115]
         // liSelectIds = [34, 78, 70, 164, 163, 147, 51, 12, 115, 148, 127, 144, 10]
+        // liSelectIds = [162]
 
         var box = liBox[3]
 
         console.log('data', data, 'bound', bound, steps)
-        
-        var svg = d3.select('#mysvg')
-        var lScaleX = d3.scaleLinear().domain(bound[0]).range([10, 590])
-        var lScaleY = d3.scaleLinear().domain(bound[1]).range([10, 590])
+        var svgW = 300, svgH = 600
+        var svg = d3.select('#mysvg').style('width', svgW).style('height', svgH)
+        var lScaleX = d3.scaleLinear().domain(bound[0]).range([10, svgW - 10])
+        var lScaleY = d3.scaleLinear().domain(bound[1]).range([10, svgH - 10])
 
         svg.on('click', function(e){
             console.log('mouse', d3.mouse(this), d3.event.clientX, d3.event.clientY)
@@ -85,9 +86,13 @@
             .attr('class', function(d){
                 return d[0]
             })
-            .style('r', 5)
+            .style('r', function(d){
+                //  && Number(d[3]) == steps[steps.length - 1]
+                if(liSelectIds.indexOf(d[0]) == -1)
+                     return 2 + d[3] * 0.5
+                return 2
+            })
             .style('cx', function(d){
-                // console.log(' lScale(Number(d[0])) ', Number(d[1]), lScaleX(Number(d[1])))
                 nnodes['c_' + d[0]+'_'+d[3]] = {
                     'x': lScaleX(Number(d[1])),
                     'y': lScaleY(Number(d[2]))
@@ -99,27 +104,22 @@
             })
             .style('fill', function(d){
                 return Rcolor(d[3]/steps[steps.length - 1])
-                // return color[Math.floor(d[3])]
             })
             .style('stroke', function(d){
-                // if(Number(d[3]) >= steps[steps.length - 1] && lScaleX(Number(d[1])) > box[0][0] && lScaleX(Number(d[1])) < box[0][1] 
-                //         &&  lScaleY(Number(d[2])) > box[1][0] && lScaleY(Number(d[2])) < box[1][1]){
-                //             return 'white'
-                //         }
-                return Rcolor(0.5)
+                return 'white'
             })
             .style('visibility', function(d){
                 if(liSelectIds.indexOf(d[0]) == -1)
                      return 'visible'
                 if(Number(d[3]) < steps[steps.length - 1] )
                     return 'hidden'
-                return 'visible'
+                return 'hidden'
             })
             .style('opacity', function(d){
                 if(Number(d[3]) >= steps[steps.length - 1] && lScaleX(Number(d[1])) > box[0][0] && lScaleX(Number(d[1])) < box[0][1] 
                         &&  lScaleY(Number(d[2])) > box[1][0] && lScaleY(Number(d[2])) < box[1][1])
                             return 1.
-                return 0.3
+                return 0.7
             })
             .on('click', function(d){
                 console.log('id=', d[0])
@@ -132,15 +132,8 @@
         
         // var liSelectIds = ids;
         for(var i = 0; i < liSelectIds.length; i ++){
-            var lineData = []
-            // for(var j = steps.length - 2; j < steps.length; j ++){                
-            //     var c = d3.select('#c_' + ids[i] + '_' + steps[j])
-            //     lineData.push({
-            //         'x': +c.style('cx'),
-            //         'y': +c.style('cy')
-            //     })
-            // }
-            
+
+            var lineData = []            
             for(var j = 0; j < steps.length; j ++){                
                 var c = d3.select('#c_' + liSelectIds[i] + '_' + steps[j])
                 lineData.push({
@@ -158,11 +151,13 @@
                         .style('stroke-width', '4px')
                         .style('fill', 'none');
             
+            var lineLength = getPolyLen(lineData)
+            var tailWidth = 12 - (lineLength / 100)
+            console.log('lineLength', lineLength, tailWidth)
+            if(tailWidth < 3)
+                tailWidth = 3
             // continue
             lineGraph.remove()
-            // if(lineGraph.node().getTotalLength() < 500)
-            //     continue
-            // console.log('linegraph=', lineGraph.node())
 
             svg.selectAll(".s_" + liSelectIds[i])
                 .data(quads(samples(lineGraph.node(), 4)))
@@ -171,23 +166,16 @@
                 .attr('class', "s_" + liSelectIds[i])
                 .style("fill", function(d) { return Rcolor(d.t); })
                 .style("stroke", function(d) { return Rcolor(d.t); })
-                .attr("d", function(d) { return lineJoin(d[0], d[1], d[2], d[3], 6 * d.t); });
+                .attr("d", function(d) { return lineJoin(d[0], d[1], d[2], d[3], tailWidth * d.t); });
 
-                // .style('visibility', function(d){
-                //     if(d[d.length - 1]['x'] > box[0][0] && d[d.length - 1]['x'] < box[0][1] 
-                //     && 
-                //         d[d.length - 1]['y'] > box[1][0] && d[d.length - 1]['y'] < box[1][1]
-                //     )
-                //         return 'visible'
-                //     return 'hidden'
-                // })
-
-
-                //         .style("stroke","rgb(241, 105, 19)")
-                //         .style('stroke', 'url(#orange_red)')
-                //         .style("stroke-width", 3)
-                //         .style('fill', 'none')
-                      
+            svg.append('circle')               
+                .style('r', function(d){
+                    return tailWidth * 0.8
+                })
+                .style('cx', +d3.select('#c_' + liSelectIds[i] + '_' + steps[steps.length - 1]).style('cx'))
+                .style('cy',  +d3.select('#c_' + liSelectIds[i] + '_' + steps[steps.length - 1]).style('cy'))
+                .style('fill', Rcolor(1))
+                .style('stroke', 'white')
         }
     
         //edge bundling

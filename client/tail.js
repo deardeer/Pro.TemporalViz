@@ -10,16 +10,16 @@ function samples(path, precision) {
   });
 }
 
-function samples_unit(path, precision){
-  var n = path.getTotalLength(), t = [0], i = 0, dt = precision;
-  while ((i += dt) < n) t.push(i);
-  t.push(n);
-  return t.map(function(t) {
-    var p = path.getPointAtLength(t), a = [p.x, p.y];
-    a.t = t / n;
-    return a;
-  });
-}
+// function samples_unit(path, precision){
+//   var n = path.getTotalLength(), t = [0], i = 0, dt = precision;
+//   while ((i += dt) < n) t.push(i);
+//   t.push(n);
+//   return t.map(function(t) {
+//     var p = path.getPointAtLength(t), a = [p.x, p.y];
+//     a.t = t / n;
+//     return a;
+//   });
+// }
 
 // Compute quads of adjacent points [p0, p1, p2, p3].
 function quads(points) {
@@ -51,6 +51,17 @@ function lineJoin(p0, p1, p2, p3, width) {
     c = lineIntersect(p2, e, d, c);
   }
 
+  //judge goodness
+  liPo = [a,b,c,d]
+  var sumEdge = 0
+  for(var i = 0; i < liPo.length; i ++){
+    var edge = getLen(liPo[i], liPo[(i + 1)%liPo.length])
+    sumEdge += edge
+  }
+  
+  if(sumEdge > width * 10)
+    return ""
+
   return "M" + a + "L" + b + " " + c + " " + d + "Z";
 }
 
@@ -73,4 +84,12 @@ function perp(p0, p1) {
 function getLen(p0, p1){
   var u01x = p1[0] - p0[0], u01y =  p0[1] - p1[1]
   return Math.sqrt(u01x * u01x + u01y * u01y);
+}
+
+//compute polyline length
+function getPolyLen(liP){
+  var length = 0
+  for(var i = 0; i < liP.length - 1; i ++)
+    length += getLen([liP[i].x, liP[i].y], [liP[i+1].x, liP[i+1].y])
+  return length
 }
