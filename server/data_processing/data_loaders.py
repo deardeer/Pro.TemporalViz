@@ -61,6 +61,12 @@ def population_data(years):
 	return data
 
 
+def synthetic_data(id):
+	data = pd.read_csv(os.path.join(data_dir_prefix, f"raw/synthetic_data{id}.csv"))
+	data.t = data.t - 1
+	return data
+
+
 def load_data(data_source, time_steps=None):
 	if data_source == "coronavirus_china":
 		if time_steps is None:
@@ -82,7 +88,15 @@ def load_data(data_source, time_steps=None):
 			time_steps = [1960, 1970, 1980, 1990, 2000, 2010]
 		data = population_data(years=time_steps)
 		data.columns = ['item', 't', 0, 1, 2]
-
+	elif data_source == "synthetic_1":
+		data = synthetic_data(1)
+		data.columns = ['item', 0, 1, 2, 't']
+	elif data_source == "synthetic_2":
+		data = synthetic_data(2)
+		data.columns = ['item', 0, 1, 2, 't']
+	elif data_source == "synthetic_3":
+		data = synthetic_data(3)
+		data.columns = ['item', 0, 1, 2, 't']
 	else:
 		raise NotImplementedError
 	return data
@@ -113,5 +127,5 @@ def get_data(dataset):
 
 
 if __name__ == '__main__':
-	df = load_data("coronavirus_us")
+	df = load_data("synthetic_2")
 	print()

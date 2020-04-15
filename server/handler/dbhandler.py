@@ -23,7 +23,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 	def post(self):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
-		dataset = "coronavirus_us"  # options: countries, coronavirus_china, coronavirus_us
+		dataset = "synthetic_3"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
 		dimensional_reduction = "t_pca"  # options: t_pca, pca
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
@@ -45,7 +45,14 @@ class getPlotHandler(tornado.web.RequestHandler):
 		bound_y = [min(data2d['1']), max(data2d['1'])]
 
 		print("Choose Strokes Indices...")
-		dist_threshold = 0.05 if dataset == "countries" else 50
+		if dataset == "countries":
+			dist_threshold = 0.05
+		elif dataset.startswith("synthetic"):
+			dist_threshold = 1000
+		elif dataset.startswith("coronavirus"):
+			dist_threshold = 50
+		else:
+			dist_threshold = 10
 		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
 																		dist_threshold=dist_threshold)
 
