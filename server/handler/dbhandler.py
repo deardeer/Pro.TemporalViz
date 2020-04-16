@@ -47,6 +47,8 @@ class getPlotHandler(tornado.web.RequestHandler):
 		print("Choose Strokes Indices...")
 		if dataset == "countries":
 			dist_threshold = 0.05
+		elif dataset == "synthetic_3":
+			dist_threshold = 10000
 		elif dataset.startswith("synthetic"):
 			dist_threshold = 1000
 		elif dataset.startswith("coronavirus"):
