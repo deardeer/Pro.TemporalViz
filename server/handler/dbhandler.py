@@ -10,7 +10,7 @@ import json
 import pandas as pd
 
 from data_processing.choose_lines import get_lines_indices_to_show
-from data_processing.data_loaders import get_data
+from data_processing.data_loaders import get_data, get_tags
 from data_processing.dimensional_reduction import t_pca, pca, get_translation_factor
 
 
@@ -23,7 +23,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 	def post(self):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
-		dataset = "synthetic_3"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
+		dataset = "countries"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
 		dimensional_reduction = "t_pca"  # options: t_pca, pca
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
@@ -58,8 +58,11 @@ class getPlotHandler(tornado.web.RequestHandler):
 		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
 																		dist_threshold=dist_threshold)
 
+		id_to_tag = get_tags(dataset, data2d['item'])
+
 		return self.write({'data': data2d.values.tolist(),
 		'ids': list(map(int, data2d['item'].tolist())),
+		'tags': id_to_tag,
 		'steps': list(map(int, list(set(data2d['t'])))),
 		'drawids': list(map(int, lines_indices_to_show)),
 		'bound': [bound_x, bound_y]})
