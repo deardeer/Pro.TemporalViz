@@ -24,7 +24,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
 		dataset = "synthetic_3"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
-		dimensional_reduction = "t_pca"  # options: t_pca, pca
+		dimensional_reduction = "pca"  # options: t_pca, pca
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
 		print(f"Loading Data...")
