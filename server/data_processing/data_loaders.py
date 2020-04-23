@@ -64,9 +64,14 @@ def population_data(years, tags=False):
 	return data
 
 
-def synthetic_data(id):
-	data = pd.read_csv(os.path.join(data_dir_prefix, f"raw/synthetic_data{id}_colors.csv"))
+def synthetic_data(id, tags=False):
+	filename = f"raw/synthetic_data{id}.csv" if id == 3 else f"raw/synthetic_data{id}_colors.csv"
+	data = pd.read_csv(os.path.join(data_dir_prefix, filename))
 	data.t = data.t - 1
+	if not tags:
+		data = data[['id', 't', '0', '1', '2']]
+	else:
+		data = data[['id', 'label', 't', '0', '1', '2']]
 	return data
 
 
@@ -75,7 +80,7 @@ def load_data(data_source, time_steps=None, tags=False):
 		if time_steps is None:
 			time_steps = list(range(6))
 		data = coronavirus_data({"Country/Region": "China"}, time_steps, china=True)
-		data.columns = ['item', 0, 1, 2, 3, 4, 't']
+		data.columns = ['id', 0, 1, 2, 3, 4, 't']
 		data[[3, 4]] *= 20
 		data[[0, 1]] *= 50
 
@@ -92,13 +97,13 @@ def load_data(data_source, time_steps=None, tags=False):
 		data = population_data(years=time_steps, tags=tags)
 		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	elif data_source == "synthetic_1":
-		data = synthetic_data(1)
-		data.columns = ['item', 0, 1, 2, 't']
+		data = synthetic_data(1, tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	elif data_source == "synthetic_2":
-		data = synthetic_data(2)
-		data.columns = ['item', 0, 1, 2, 't']
+		data = synthetic_data(2, tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	elif data_source == "synthetic_3":
-		data = synthetic_data(3)
+		data = synthetic_data(3, tags)
 		data.columns = ['item', 0, 1, 2, 't']
 	else:
 		raise NotImplementedError
@@ -130,11 +135,14 @@ def get_data(dataset):
 
 
 def get_tags(dataset, ids):
-	if dataset != "countries":
+	if dataset not in ["countries", "synthetic_1", "synthetic_2"]:
 		return {}
 	data = load_data(dataset, tags=True)
 	items = data['item'].unique()
-	tags = {i: (items[i], data[data.item == items[i]]['tag'].unique()[0]) for i in ids}
+	if dataset == "countries":
+		tags = {i: (items[i], data[data.item == items[i]]['tag'].unique()[0]) for i in ids}
+	else:
+		tags = {i: int(data[data.item == items[i]]['tag'].unique()[0]) for i in ids}
 	return tags
 
 

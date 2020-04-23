@@ -11,7 +11,7 @@ import pandas as pd
 
 from data_processing.choose_lines import get_lines_indices_to_show
 from data_processing.data_loaders import get_data, get_tags
-from data_processing.dimensional_reduction import t_pca, pca, get_translation_factor
+from data_processing.dimensional_reduction import t_pca, pca, get_translation_factor, tsne
 
 
 def convert(o):
@@ -24,7 +24,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
 		dataset = "synthetic_2"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
-		dimensional_reduction = "t_pca"  # options: t_pca, pca
+		dimensional_reduction = "t_pca"  # options: t_pca, pca, tsne
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
 		print(f"Loading Data...")
@@ -36,10 +36,16 @@ class getPlotHandler(tornado.web.RequestHandler):
 			translation_factor = get_translation_factor(data_by_step)
 			data2d = t_pca(data_by_step, diffs_between_steps, translation_factor=translation_factor)
 			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
-		else:  # dimensional_reduction is pca
+		elif dimensional_reduction == "pca":
 			data_by_step, _ = get_data(dataset)
 			data2d = pca(data_by_step)
 			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+		elif dimensional_reduction == "tsne":
+			data_by_step, _ = get_data(dataset)
+			data2d = tsne(data_by_step)
+			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+		else:
+			raise NotImplementedError
 
 		bound_x = [min(data2d['0']), max(data2d['0'])]
 		bound_y = [min(data2d['1']), max(data2d['1'])]

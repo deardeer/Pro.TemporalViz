@@ -1,6 +1,7 @@
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
+from sklearn.manifold import TSNE
 
 
 def pca(data_by_step):
@@ -27,6 +28,14 @@ def t_pca(data_by_step, diffs_between_steps, translation_factor):
 	pca.fit(np.concatenate(translated_data))
 	translated_data2d = pca.transform(np.concatenate(data_by_step))
 	data2d_df = data2d_to_df(translated_data2d, len(data_by_step), data_by_step[0].shape[0])
+	return data2d_df
+
+
+def tsne(data_by_step):
+	tsne = TSNE(n_components=2)
+	data_array = np.concatenate(data_by_step)
+	data2d = tsne.fit_transform(data_array)
+	data2d_df = data2d_to_df(data2d, len(data_by_step), data_by_step[0].shape[0])
 	return data2d_df
 
 
