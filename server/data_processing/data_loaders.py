@@ -65,7 +65,7 @@ def population_data(years, tags=False):
 
 
 def synthetic_data(id):
-	data = pd.read_csv(os.path.join(data_dir_prefix, f"raw/synthetic_data{id}.csv"))
+	data = pd.read_csv(os.path.join(data_dir_prefix, f"raw/synthetic_data{id}_colors.csv"))
 	data.t = data.t - 1
 	return data
 

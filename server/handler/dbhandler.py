@@ -23,7 +23,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 	def post(self):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
-		dataset = "countries"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
+		dataset = "synthetic_2"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
 		dimensional_reduction = "t_pca"  # options: t_pca, pca
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
