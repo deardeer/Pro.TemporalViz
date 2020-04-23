@@ -5,6 +5,7 @@
     <script src="./lib/lurlquery.js"></script>
     <script src="./lib/drawfun.js"></script>
     <script src="./tail.js"></script>
+    <script src="./styleconfig.js"></script>
     <script type="text/javascript" src="./lib/d3-ForceEdgeBundling.js"></script>
 </head>
 
@@ -26,15 +27,7 @@
 <script>
     gData = []
 
-    loadData()
-
-    //rainbow style
-    var Rcolor = d3.interpolateRainbow;
-    //single tone style
-    Rcolor = d3.scaleLinear()
-               .domain([0, 1])
-               .range(['white', d3.schemeOrRd[9][5]]) //Rcolor(1)])
-               .interpolate(d3.interpolateHcl)
+    loadData()                
 
     var path = d3.select("path").remove();
    
@@ -46,36 +39,87 @@
     }
 
     function successGetData(response){
-        console.log('response=', response['data'], response['bound'], response['drawids'])
-        drawPlot(response['data'], response['bound'], response['ids'], response['steps'], response['drawids'])
+        console.log('response=', response['data'],  response['tags'], response['bound'], response['drawids'])
+        console.log('response length=', response['data'].length,  Object.keys(response['tags']).length)
+        drawPlot(response['data'], response['tags'], response['bound'], response['ids'], response['steps'], response['drawids'])
     }
 
-    function drawPlot(data, bound, ids, steps, drawids){
+    function drawPlot(data, tags, bound, ids, steps, drawids){
 
-        var liBox=[[[280.5, 319.5],[85.5, 203.5]],
-                    [[80.5, 280.5],[85.5, 203.5]],
-                    [[320, 398], [130, 210]],
-                    [[0, 600], [0, 600]]]
+        //rainbow style
+        var Rcolor = d3.interpolateRainbow;
 
-        liSelectIds = drawids; //[34, 78, 70, 164, 163, 147, 51, 12, 115]
-        // liSelectIds = [34, 78, 70, 164, 163, 147, 51, 12, 115, 148, 127, 144, 10]
-        // liSelectIds = [162]
+        //single tone style
+        Rcolor = d3.scaleLinear()
+                .domain([0, 1])
+                .range(['white', d3.schemeOrRd[9][5]]) 
+                .interpolate(d3.interpolateHcl)
 
-        var box = liBox[3]
+        //color for country
+        Rcolor = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range(['#31a354', '#e5f5e0'])
+                    .interpolate(d3.interpolateHcl)
+        beginC = "#fee8c8", endC = "#e34a33" //red
+        RColor1 = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range([endC, beginC])
+                    .interpolate(d3.interpolateHcl)
+        beginC = "#e5f5e0", endC = "#31a354" //green
+        RColor2 = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range([endC, beginC])
+                    .interpolate(d3.interpolateHcl)
+        beginC = "#deebf7", endC = "#3182bd" //blue
+        RColor3 = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range([endC, beginC])
+                    .interpolate(d3.interpolateHcl)
 
-        console.log('data', data, 'bound', bound, steps)
-        var svgW = 300, svgH = 600
-        var svg = d3.select('#mysvg').style('width', svgW).style('height', svgH)
+        beginC = "#fde0dd", endC = "#c51b8a" //pink
+        RColor4 = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range([endC, beginC])
+                    .interpolate(d3.interpolateHcl)
+
+        beginC = "#efedf5", endC = "#756bb1" //pink
+        RColor5 = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range([endC, beginC])
+                    .interpolate(d3.interpolateHcl)
+
+        liRColor = []
+
+        switch(config.tailColor){
+            case 'green': 
+                liRColor = [RColor2]
+                break
+            case 'orange':
+                liRColor = [RColor1]
+                break
+            case 'class':
+                liRColor = [RColor1, RColor2, RColor3, RColor4, RColor5]
+                break
+        }
+
+        console.log('config', config.canvasWH)
+        var svgW = config.canvasWH[0], svgH = config.canvasWH[1]
+        var svg = d3.select('#mysvg')
+                    .style('width', svgW)
+                    .style('height', svgH)
+
         var lScaleX = d3.scaleLinear().domain(bound[0]).range([10, svgW - 10])
         var lScaleY = d3.scaleLinear().domain(bound[1]).range([10, svgH - 10])
 
-        svg.on('click', function(e){
-            console.log('mouse', d3.mouse(this), d3.event.clientX, d3.event.clientY)
-        })
+        liId = []
+        for(var i = 0; i < data.length; i ++)
+            liId.push(data[i][0])
 
-        var color = d3.schemeOranges[9]
-        
-        nnodes = {}
+        if(config.drawAllTails)
+            liSelectIds = liId; 
+        else
+            liSelectIds = drawids
+
         svg.selectAll('circle')
            .data(data)
             .enter()
@@ -86,40 +130,50 @@
             .attr('class', function(d){
                 return d[0]
             })
+            .attr('tag', function(d){
+                if(Object.keys(tags).length == 0) //if tags is empty, points will be the same color
+                    return 0
+                //Or, here you can assign different class different tag, and use this tag as index to get
+                //color
+                var region = tags[d[0]][1]
+                if(['Asia'].indexOf(region) != -1)
+                    return 0
+                if(['Europe'].indexOf(region) != -1)
+                    return 1
+                if(['Africa'].indexOf(region) != -1)
+                    return 2
+                if(['North America'].indexOf(region) != -1)
+                    return 3
+                return 4
+            })
             .style('r', function(d){
-                //  && Number(d[3]) == steps[steps.length - 1]
-                if(liSelectIds.indexOf(d[0]) == -1)
-                     return 2 + d[3] * 0.5
-                return 2
+                if(Number(d[3]) == steps[steps.length - 1])
+                    return 1
+                return 4
+            })
+            .style('fill', function(d){
+                var color_temp = liRColor[+d3.select(this).attr('tag')] //get the tag, and then get corresponding color
+                return color_temp(d[3]/steps[steps.length - 1])
             })
             .style('cx', function(d){
-                nnodes['c_' + d[0]+'_'+d[3]] = {
-                    'x': lScaleX(Number(d[1])),
-                    'y': lScaleY(Number(d[2]))
-                }
                 return lScaleX(Number(d[1]))
             })
             .style('cy', function(d){
-            return lScaleY(Number(d[2]))
-            })
-            .style('fill', function(d){
-                return Rcolor(d[3]/steps[steps.length - 1])
+                return lScaleY(Number(d[2]))
             })
             .style('stroke', function(d){
+                return 'lightgray'
+                return 'none'
                 return 'white'
             })
             .style('visibility', function(d){
-                if(liSelectIds.indexOf(d[0]) == -1)
-                     return 'visible'
-                if(Number(d[3]) < steps[steps.length - 1] )
+                if(Number(d[3]) != 0)
                     return 'hidden'
-                return 'hidden'
+                return 'visible'
             })
             .style('opacity', function(d){
-                if(Number(d[3]) >= steps[steps.length - 1] && lScaleX(Number(d[1])) > box[0][0] && lScaleX(Number(d[1])) < box[0][1] 
-                        &&  lScaleY(Number(d[2])) > box[1][0] && lScaleY(Number(d[2])) < box[1][1])
-                            return 1.
-                return 0.7
+                return 1
+                //Or, here you can change alpha for each dot 
             })
             .on('click', function(d){
                 console.log('id=', d[0])
@@ -130,7 +184,6 @@
                             .y(function(d){return d.y;})
                             .curve(d3.curveMonotoneX) ;
         
-        // var liSelectIds = ids;
         for(var i = 0; i < liSelectIds.length; i ++){
 
             var lineData = []            
@@ -140,42 +193,37 @@
                     'x': +c.style('cx'),
                     'y': +c.style('cy')
                 })
-
             }
                        
             var lineGraph = svg.append("path")
                         .datum(lineData)
                         .attr('id', 'l_' + liSelectIds[i])
                         .attr("d",lineFunction)
-                        .style('stroke', 'black')
+                        .style('stroke', 'blue')
                         .style('stroke-width', '4px')
                         .style('fill', 'none');
             
             var lineLength = getPolyLen(lineData)
             var tailWidth = 12 - (lineLength / 100)
-            console.log('lineLength', lineLength, tailWidth)
+            var tailWidth = 6 - (lineLength / 100)
             if(tailWidth < 3)
                 tailWidth = 3
-            // continue
+
             lineGraph.remove()
 
             svg.selectAll(".s_" + liSelectIds[i])
-                .data(quads(samples(lineGraph.node(), 4)))
+                .data(quads(samples(lineGraph.node(), 0.5)))
                 .enter()
                 .append("path")
                 .attr('class', "s_" + liSelectIds[i])
-                .style("fill", function(d) { return Rcolor(d.t); })
-                .style("stroke", function(d) { return Rcolor(d.t); })
-                .attr("d", function(d) { return lineJoin(d[0], d[1], d[2], d[3], tailWidth * d.t); });
+                .style("fill", function(d) { 
+                    var color_temp = liRColor[+d3.select('#c_' + liSelectIds[i] + '_0').attr('tag')]
+                    return color_temp(d.t); })
+                .style("stroke", function(d) {                      
+                    var color_temp = liRColor[+d3.select('#c_' + liSelectIds[i] + '_0').attr('tag')]
+                    return color_temp(d.t); })
+                .attr("d", function(d) { return lineJoin(d[0], d[1], d[2], d[3], tailWidth * (1 - d.t)); });
 
-            svg.append('circle')               
-                .style('r', function(d){
-                    return tailWidth * 0.8
-                })
-                .style('cx', +d3.select('#c_' + liSelectIds[i] + '_' + steps[steps.length - 1]).style('cx'))
-                .style('cy',  +d3.select('#c_' + liSelectIds[i] + '_' + steps[steps.length - 1]).style('cy'))
-                .style('fill', Rcolor(1))
-                .style('stroke', 'white')
         }
     
         //edge bundling
