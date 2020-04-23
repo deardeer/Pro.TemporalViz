@@ -42,9 +42,12 @@ def coronavirus_data(filter_options, time_step_indices, china=False):
 	return data_matrix
 
 
-def population_data(years):
+def population_data(years, tags=False):
 	data = pd.read_csv(os.path.join(data_dir_prefix, "raw/population_measurments.csv"))
-	data = data[["Country", "Year", "Population", "LifeExp", "GDP"]]
+	if tags:
+		data = data[["Country", "Region", "Year", "Population", "LifeExp", "GDP"]]
+	else:
+		data = data[["Country", "Year", "Population", "LifeExp", "GDP"]]
 	for i, year in enumerate(years):
 		data.loc[data.index[data.Year == year], "Year"] = int(i)
 	data = data[data.Year.isin(range(len(years)))]
@@ -67,7 +70,7 @@ def synthetic_data(id):
 	return data
 
 
-def load_data(data_source, time_steps=None):
+def load_data(data_source, time_steps=None, tags=False):
 	if data_source == "coronavirus_china":
 		if time_steps is None:
 			time_steps = list(range(6))
@@ -86,8 +89,8 @@ def load_data(data_source, time_steps=None):
 	elif data_source == "countries":
 		if time_steps is None:
 			time_steps = [1960, 1970, 1980, 1990, 2000, 2010]
-		data = population_data(years=time_steps)
-		data.columns = ['item', 't', 0, 1, 2]
+		data = population_data(years=time_steps, tags=tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	elif data_source == "synthetic_1":
 		data = synthetic_data(1)
 		data.columns = ['item', 0, 1, 2, 't']
@@ -126,6 +129,16 @@ def get_data(dataset):
 	return data_by_step, diffs_between_steps
 
 
+def get_tags(dataset, ids):
+	if dataset != "countries":
+		return {}
+	data = load_data(dataset, tags=True)
+	items = data['item'].unique()
+	tags = {i: (items[i], data[data.item == items[i]]['tag'].unique()[0]) for i in ids}
+	return tags
+
+
+
 if __name__ == '__main__':
-	df = load_data("synthetic_2")
+	df = get_tags("countries", ids=range(5))
 	print()
