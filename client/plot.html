@@ -102,12 +102,15 @@
                 break
         }
 
-        var svgH = config.canvasWH[0], svgW = config.canvasWH[1]
-        var svg = d3.select('#mysvg').style('width', svgW).style('height', svgH)
+        console.log('config', config.canvasWH)
+        var svgW = config.canvasWH[0], svgH = config.canvasWH[1]
+        var svg = d3.select('#mysvg')
+                    .style('width', svgW)
+                    .style('height', svgH)
+
         var lScaleX = d3.scaleLinear().domain(bound[0]).range([10, svgW - 10])
         var lScaleY = d3.scaleLinear().domain(bound[1]).range([10, svgH - 10])
 
-    
         liId = []
         for(var i = 0; i < data.length; i ++)
             liId.push(data[i][0])

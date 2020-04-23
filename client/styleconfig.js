@@ -34,4 +34,4 @@ var config_fig8 = {
     'canvasWH': [500, 200] //fig 8(a), [200, 500] for fig 8(b) 
 }
 
-config = config_fig7
+config = config_fig5
