@@ -1,3 +1,4 @@
+import umap
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
@@ -39,6 +40,15 @@ def tsne(data_by_step):
 	return data2d_df
 
 
+def u_map(data_by_step):
+	umap_reducer = umap.UMAP()
+	data_array = np.concatenate(data_by_step)
+	data2d = umap_reducer.fit_transform(data_array)
+	data2d_df = data2d_to_df(data2d, len(data_by_step), data_by_step[0].shape[0])
+	return data2d_df
+
+
+
 def data2d_to_df(data_array, num_steps, amount_data_per_step):
 	data2d_df = pd.DataFrame(data_array)
 	data2d_df['t'] = 0
@@ -57,7 +67,7 @@ def get_translation_factor(data_by_step):
 	diffs = max_coors - min_coors
 	r = diffs.max()
 	mean_dist = get_mean_dist(data_by_step)
-	alpha = r / mean_dist if r < 1 else r
+	alpha = r / mean_dist
 	return alpha
 
 
