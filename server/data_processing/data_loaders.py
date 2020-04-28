@@ -44,6 +44,7 @@ def coronavirus_data(filter_options, time_step_indices, china=False):
 
 def population_data(years, tags=False):
 	data = pd.read_csv(os.path.join(data_dir_prefix, "raw/population_measurments.csv"))
+	data = data[data["Region"].isin(["Asia", "Africa", "Europe", "North America"])]
 	if tags:
 		data = data[["Country", "Region", "Year", "Population", "LifeExp", "GDP"]]
 	else:
@@ -64,8 +65,11 @@ def population_data(years, tags=False):
 	return data
 
 
-def synthetic_data(id, tags=False):
-	filename = f"raw/synthetic_data{id}.csv" if id == 3 else f"raw/synthetic_data{id}_colors.csv"
+def synthetic_data(id, tags=False, duplicated=False):
+	if duplicated:
+		filename = f"raw/synthetic_{id}_duplicated.csv"
+	else:
+		filename = f"raw/synthetic_data{id}.csv" if id == 3 else f"raw/synthetic_data{id}_colors.csv"
 	data = pd.read_csv(os.path.join(data_dir_prefix, filename))
 	data.t = data.t - 1
 	if not tags:
@@ -104,7 +108,27 @@ def load_data(data_source, time_steps=None, tags=False):
 		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	elif data_source == "synthetic_3":
 		data = synthetic_data(3, tags)
-		data.columns = ['item', 0, 1, 2, 't']
+		data.columns = ['item', 't', 0, 1, 2]
+	elif data_source == "synthetic_4":
+		data = synthetic_data(4, tags)
+		data.columns = ['item', 't', 0, 1, 2]
+	elif data_source == "synthetic_5":
+		data = synthetic_data(5, tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
+	elif data_source == "synthetic_6":
+		data = synthetic_data(6, tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
+	elif data_source == "synthetic_8":
+		data = synthetic_data(8, tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
+	elif data_source == "synthetic_cross":
+		data = synthetic_data(7, tags)
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
+	elif data_source.split("_")[0] == "synthetic" and data_source.split("_")[2] == "duplicated":
+		id = data_source.split("_")[1]
+		data = synthetic_data(id, tags, duplicated=True)
+		data['t'] += 1
+		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	else:
 		raise NotImplementedError
 	return data
@@ -135,7 +159,7 @@ def get_data(dataset):
 
 
 def get_tags(dataset, ids):
-	if dataset not in ["countries", "synthetic_1", "synthetic_2"]:
+	if dataset not in ["countries", "synthetic_1", "synthetic_2", "synthetic_5", "synthetic_6", "synthetic_8", "synthetic_cross", "synthetic_cross_duplicated"]:
 		return {}
 	data = load_data(dataset, tags=True)
 	items = data['item'].unique()

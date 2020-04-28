@@ -61,16 +61,26 @@ def data2d_to_df(data_array, num_steps, amount_data_per_step):
 
 
 def get_translation_factor(data_by_step):
-	data = np.concatenate(data_by_step)
-	max_coors = data.max(axis=0)
-	min_coors = data.min(axis=0)
-	diffs = max_coors - min_coors
-	r = diffs.max()
+	std = get_std_dist(data_by_step)
 	mean_dist = get_mean_dist(data_by_step)
-	alpha = r / mean_dist
+	alpha = std / mean_dist
 	return alpha
 
 
 def get_mean_dist(data_by_step):
 	diffs = np.abs(data_by_step[-1] - data_by_step[0])
 	return diffs.mean()
+
+def get_std_dist(data_by_step):
+	distances = []
+	for t in range(len(data_by_step)):
+		distances_t = []
+		data_t = data_by_step[t]
+		for i in range(data_t.shape[0]):
+			dists_i = [np.sqrt(np.sum((data_t[i] - data_t[j]) ** 2)) for j in range(i + 1, data_t.shape[0])]
+			distances_t.extend(dists_i)
+		distances.append(distances_t)
+	distances_array = np.array(distances)
+	return distances_array.std()
+
+

@@ -136,6 +136,9 @@
                 //Or, here you can assign different class different tag, and use this tag as index to get
                 //color
                 var region = tags[d[0]][1]
+                var syn_label = tags[d[0]]
+                if (region == undefined)
+                    return syn_label
                 if(['Asia'].indexOf(region) != -1)
                     return 0
                 if(['Europe'].indexOf(region) != -1)

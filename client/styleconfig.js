@@ -12,7 +12,7 @@ var config_fig1 = {
 
 var config_fig5 = {
     'drawAllTails': false,
-    'tailColor': 'orange',
+    'tailColor': 'class',
     'canvasWH': [500, 250],
 }
 
@@ -25,7 +25,7 @@ var config_fig6 = {
 var config_fig7 = {
     'drawAllTails': false,
     'tailColor': 'orange',
-    'canvasWH': [500, 200] 
+    'canvasWH': [500, 200]
 }
 
 var config_fig8 = {
@@ -34,4 +34,4 @@ var config_fig8 = {
     'canvasWH': [500, 200] //fig 8(a), [200, 500] for fig 8(b) 
 }
 
-config = config_fig5
+config = config_fig6

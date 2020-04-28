@@ -11,7 +11,7 @@ import pandas as pd
 
 from data_processing.choose_lines import get_lines_indices_to_show
 from data_processing.data_loaders import get_data, get_tags
-from data_processing.dimensional_reduction import t_pca, pca, get_translation_factor, tsne
+from data_processing.dimensional_reduction import t_pca, pca, get_translation_factor, tsne, u_map
 
 
 def convert(o):
@@ -23,8 +23,9 @@ class getPlotHandler(tornado.web.RequestHandler):
 	def post(self):
 		self.set_header('Access-Control-Allow-Origin', '*');
 
-		dataset = "synthetic_2"  # options: countries, coronavirus_china, coronavirus_us, synthetic_1, synthetic_2, synthetic_3
-		dimensional_reduction = "t_pca"  # options: t_pca, pca, tsne
+		dataset = "countries"  # options: countries, coronavirus_china, coronavirus_us,
+									 # synthetic_1, synthetic_2, synthetic_3, synthetic_cross
+		dimensional_reduction = "t_pca"  # options: t_pca, pca, tsne, umap
 
 		print(f"dataset={dataset}, method={dimensional_reduction}")
 		print(f"Loading Data...")
@@ -34,15 +35,20 @@ class getPlotHandler(tornado.web.RequestHandler):
 		elif dimensional_reduction == "t_pca":
 			data_by_step, diffs_between_steps = get_data(dataset)
 			translation_factor = get_translation_factor(data_by_step)
+			print(f"The translation factor alpha is: {translation_factor}")
 			data2d = t_pca(data_by_step, diffs_between_steps, translation_factor=translation_factor)
-			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+			# data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
 		elif dimensional_reduction == "pca":
 			data_by_step, _ = get_data(dataset)
 			data2d = pca(data_by_step)
-			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+			# data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
 		elif dimensional_reduction == "tsne":
 			data_by_step, _ = get_data(dataset)
 			data2d = tsne(data_by_step)
+			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+		elif dimensional_reduction == "umap":
+			data_by_step, _ = get_data(dataset)
+			data2d = u_map(data_by_step)
 			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
 		else:
 			raise NotImplementedError
@@ -52,8 +58,12 @@ class getPlotHandler(tornado.web.RequestHandler):
 
 		print("Choose Strokes Indices...")
 		if dataset == "countries":
-			dist_threshold = 0.05
-		elif dataset == "synthetic_3":
+			dist_threshold = 0.1
+		elif dataset == "synthetic_cross":
+			dist_threshold = 0.04
+		elif dataset == "synthetic_8":
+			dist_threshold = 80
+		elif dataset == "synthetic_3" or dataset == "synthetic_6":
 			dist_threshold = 10000
 		elif dataset.startswith("synthetic"):
 			dist_threshold = 1000
@@ -61,10 +71,21 @@ class getPlotHandler(tornado.web.RequestHandler):
 			dist_threshold = 50
 		else:
 			dist_threshold = 10
-		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
-																		dist_threshold=dist_threshold)
 
 		id_to_tag = get_tags(dataset, data2d['item'])
+		# thresholds = {"Asia": 0.6, "North America": 0.5, "Africa": 0.1, "Europe": 0.5}
+		# if dataset == "countries":
+		# 	lines_indices_to_show = []
+		# 	for tag in set([reg for _, reg in id_to_tag.values()]):
+		# 		data2d_tag = data2d[data2d.item.isin([i for i in id_to_tag if id_to_tag[i][1] == tag])]
+		# 		tag_lines_indices_to_show = get_lines_indices_to_show(data2d_tag,
+		# 													distances_cache_name=f"{dataset}_distances_cache_tag_{tag}",
+		# 													dist_threshold=thresholds[tag])
+		# 		lines_indices_to_show.extend(tag_lines_indices_to_show)
+		# else:
+		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
+																			dist_threshold=dist_threshold)
+		print(f"{len(lines_indices_to_show)} trajectories were selected")
 
 		return self.write({'data': data2d.values.tolist(),
 		'ids': list(map(int, data2d['item'].tolist())),
