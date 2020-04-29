@@ -102,7 +102,11 @@
                 break
         }
 
-        console.log('config', config.canvasWH)
+        var intTail = true
+        if(config.intTail != undefined)
+            intTail = config.intTail
+
+        console.log('config', config.canvasWH, intTail)
         var svgW = config.canvasWH[0], svgH = config.canvasWH[1]
         var svg = d3.select('#mysvg')
                     .style('width', svgW)
@@ -189,16 +193,53 @@
         
         for(var i = 0; i < liSelectIds.length; i ++){
 
-            var lineData = []            
-            for(var j = 0; j < steps.length; j ++){                
-                var c = d3.select('#c_' + liSelectIds[i] + '_' + steps[j])
-                lineData.push({
-                    'x': +c.style('cx'),
-                    'y': +c.style('cy')
-                })
-            }
-                       
-            var lineGraph = svg.append("path")
+            //subtials and corresponding width
+            var liLineData = []
+            var liTailWidth = []
+            if(!intTail){
+                for(var j = 0; j < steps.length - 1; j ++){
+                    var c1 = d3.select('#c_' + liSelectIds[i] + '_' + steps[j])
+                    var c2 = d3.select('#c_' + liSelectIds[i] + '_' + steps[j + 1])
+                    var lineData = [{
+                        'x': +c1.style('cx'),
+                        'y': +c1.style('cy')
+                    },
+                    {
+                        'x': +c2.style('cx'),
+                        'y': +c2.style('cy')
+                    }]
+
+                    var lineGraph = svg.append("path")
+                        .datum(lineData)
+                        .attr('id', 'l_' + liSelectIds[i] + '_' + j)
+                        .attr("d",lineFunction)
+                        .style('stroke', 'blue')
+                        .style('stroke-width', '4px')
+                        .style('fill', 'none');
+
+                    //Or, you can specify the tailwidth for each subtail here
+                    var lineLength = getPolyLen(lineData)
+                    var tailWidth = 12 - (lineLength / 100)
+                    var tailWidth = 6 - (lineLength / 100)
+                    if(tailWidth < 3)
+                        tailWidth = 3
+                    
+                    lineGraph.remove()
+                    
+                    liLineData.push(lineGraph.node())
+                    liTailWidth.push(tailWidth) 
+                }
+            }else{
+                var lineData = []            
+                for(var j = 0; j < steps.length; j ++){                
+                    var c = d3.select('#c_' + liSelectIds[i] + '_' + steps[j])
+                    lineData.push({
+                        'x': +c.style('cx'),
+                        'y': +c.style('cy')
+                    })
+                }  
+
+                var lineGraph = svg.append("path")
                         .datum(lineData)
                         .attr('id', 'l_' + liSelectIds[i])
                         .attr("d",lineFunction)
@@ -206,19 +247,25 @@
                         .style('stroke-width', '4px')
                         .style('fill', 'none');
             
-            var lineLength = getPolyLen(lineData)
-            var tailWidth = 12 - (lineLength / 100)
-            var tailWidth = 6 - (lineLength / 100)
-            if(tailWidth < 3)
-                tailWidth = 3
+                var lineLength = getPolyLen(lineData)
+                var tailWidth = 12 - (lineLength / 100)
+                var tailWidth = 6 - (lineLength / 100)
+                if(tailWidth < 3)
+                    tailWidth = 3
 
-            lineGraph.remove()
+                lineGraph.remove()
+                
+                liLineData.push(lineGraph.node())
+                liTailWidth.push(tailWidth) 
+            }
 
-            svg.selectAll(".s_" + liSelectIds[i])
-                .data(quads(samples(lineGraph.node(), 0.5)))
+            for(var j = 0; j < liLineData.length; j ++){
+                var tailWidth = liTailWidth[j]
+                svg.selectAll(".s_" + liSelectIds[i] + '_' + j)
+                .data(quads(samples(liLineData[j], 0.5)))
                 .enter()
                 .append("path")
-                .attr('class', "s_" + liSelectIds[i])
+                .attr('class', "s_" + liSelectIds[i] + '_' + j)
                 .style("fill", function(d) { 
                     var color_temp = liRColor[+d3.select('#c_' + liSelectIds[i] + '_0').attr('tag')]
                     return color_temp(d.t); })
@@ -226,6 +273,7 @@
                     var color_temp = liRColor[+d3.select('#c_' + liSelectIds[i] + '_0').attr('tag')]
                     return color_temp(d.t); })
                 .attr("d", function(d) { return lineJoin(d[0], d[1], d[2], d[3], tailWidth * (1 - d.t)); });
+            }                       
 
         }
     
