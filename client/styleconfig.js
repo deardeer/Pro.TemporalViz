@@ -14,6 +14,7 @@ var config_fig5 = {
     'drawAllTails': false,
     'tailColor': 'class',
     'canvasWH': [500, 250],
+    // 'intTail': false
 }
 
 var config_fig6 = {
@@ -36,4 +37,4 @@ var config_fig8 = {
     'intTail': false,
 }
 
-config = config_fig6
+config = config_fig5

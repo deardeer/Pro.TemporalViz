@@ -1,12 +1,9 @@
+from collections import defaultdict
 
 import tornado.web
-from tornado.options import options
 from sklearn import decomposition
-from numpy import array
 import numpy as np
-import io
 import os.path
-import json
 import pandas as pd
 
 from data_processing.choose_lines import get_lines_indices_to_show
@@ -37,11 +34,11 @@ class getPlotHandler(tornado.web.RequestHandler):
 			translation_factor = get_translation_factor(data_by_step)
 			print(f"The translation factor alpha is: {translation_factor}")
 			data2d = t_pca(data_by_step, diffs_between_steps, translation_factor=translation_factor)
-			# data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
 		elif dimensional_reduction == "pca":
 			data_by_step, _ = get_data(dataset)
 			data2d = pca(data_by_step)
-			# data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
+			data2d.to_csv(f"data_processing/cache/{dimensional_reduction}_{dataset}.csv", index=False)
 		elif dimensional_reduction == "tsne":
 			data_by_step, _ = get_data(dataset)
 			data2d = tsne(data_by_step)
@@ -58,7 +55,7 @@ class getPlotHandler(tornado.web.RequestHandler):
 
 		print("Choose Strokes Indices...")
 		if dataset == "countries":
-			dist_threshold = 0.1
+			dist_threshold = 0.05
 		elif dataset == "synthetic_cross":
 			dist_threshold = 0.04
 		elif dataset == "synthetic_8":
@@ -66,25 +63,26 @@ class getPlotHandler(tornado.web.RequestHandler):
 		elif dataset == "synthetic_3" or dataset == "synthetic_6":
 			dist_threshold = 10000
 		elif dataset.startswith("synthetic"):
-			dist_threshold = 1000
+			dist_threshold = 1
 		elif dataset.startswith("coronavirus"):
-			dist_threshold = 50
+			dist_threshold = 120
 		else:
 			dist_threshold = 10
 
 		id_to_tag = get_tags(dataset, data2d['item'])
-		# thresholds = {"Asia": 0.6, "North America": 0.5, "Africa": 0.1, "Europe": 0.5}
-		# if dataset == "countries":
-		# 	lines_indices_to_show = []
-		# 	for tag in set([reg for _, reg in id_to_tag.values()]):
-		# 		data2d_tag = data2d[data2d.item.isin([i for i in id_to_tag if id_to_tag[i][1] == tag])]
-		# 		tag_lines_indices_to_show = get_lines_indices_to_show(data2d_tag,
-		# 													distances_cache_name=f"{dataset}_distances_cache_tag_{tag}",
-		# 													dist_threshold=thresholds[tag])
-		# 		lines_indices_to_show.extend(tag_lines_indices_to_show)
-		# else:
-		lines_indices_to_show = get_lines_indices_to_show(data2d, distances_cache_name=f"{dataset}_distances_cache",
-																			dist_threshold=dist_threshold)
+		choose_by_class = False
+		tag_to_id = defaultdict(list)
+		if len(id_to_tag) == 0 or not choose_by_class:
+			tag_to_id[0].extend(list(data2d['item']))
+		elif dataset == "countries":
+			for id in id_to_tag:
+				tag_to_id[id_to_tag[id][1]].extend([id])
+		else:
+			for id in id_to_tag:
+				tag_to_id[id_to_tag[id]].extend([id])
+		lines_indices_to_show = get_lines_indices_to_show(data2d, tag_to_id,
+																	distances_cache_name=f"{dataset}_distances_cache",
+																	dist_threshold=dist_threshold)
 		print(f"{len(lines_indices_to_show)} trajectories were selected")
 
 		return self.write({'data': data2d.values.tolist(),

@@ -4,23 +4,45 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+
 COORDINATES_COLUMNS = ['0', '1']
-# COORDINATES_COLUMNS = [0, 1]
 
 data_processing_dir_prefix = os.path.dirname(os.path.realpath(__file__)).split("Pro.TemporalViz")[0]
 data_processing_dir_prefix = os.path.join(data_processing_dir_prefix, "Pro.TemporalViz", "server/data_processing")
 
-def get_lines_distance(line1_p1, line1_p2, line2_p1, line2_p2):
-    line1_p1 = np.array(line1_p1)
-    line1_p2 = np.array(line1_p2)
-    line2_p1 = np.array(line2_p1)
-    line2_p2 = np.array(line2_p2)
-    p1_distnace = ((line1_p1 - line2_p1) ** 2).sum()
-    p2_distance = ((line1_p2 - line2_p2) ** 2).sum()
-    return p1_distnace + p2_distance
+
+def get_point_by_dist(line_df, d):
+    segments_length = (line_df.set_index('t').diff() ** 2).sum(axis=1)
+    line_length = segments_length.sum()
+    change_direction_points = []
+    precentage = 0
+    for l in segments_length:
+        precentage += l / line_length
+        change_direction_points.append(precentage)
+    precentage_on_segment = d
+    seg_index = 0
+    while seg_index < len(change_direction_points) and d >= change_direction_points[seg_index]:
+        precentage_on_segment = d -  change_direction_points[seg_index]
+        seg_index += 1
+
+    if d == 1:
+        point = np.array(line_df[line_df.t == seg_index - 1][COORDINATES_COLUMNS])
+    else:
+        point = np.array(line_df[line_df.t == seg_index - 1][COORDINATES_COLUMNS]) + \
+                precentage_on_segment * (np.array(line_df[line_df.t == seg_index][COORDINATES_COLUMNS]) -
+                                         np.array(line_df[line_df.t == seg_index - 1][COORDINATES_COLUMNS]))
+    return point
 
 
-def get_all_lines_distances(indices, df1, df2, cache_name=None):
+def get_lines_distance(line1, line2):
+    ds = [i / line1.t.max() for i in range(line1.t.max() + 1)]
+    point1 = np.array([get_point_by_dist(line1, d)for d in ds])
+    point2 = np.array([get_point_by_dist(line2, d) for d in ds])
+    dist = ((point2 - point1) ** 2).sum()
+    return np.sqrt(dist)
+
+
+def get_all_lines_distances(indices, df, cache_name=None):
     save_cache = False
     if cache_name:
         if os.path.exists(os.path.join(data_processing_dir_prefix, f"cache/{cache_name}.csv")):
@@ -30,18 +52,12 @@ def get_all_lines_distances(indices, df1, df2, cache_name=None):
         else:
             save_cache = True
     distances = {}
-
-    print("For choosing strokes, calculating distances")
-    for i in tqdm(indices):
-        for j in indices:
-            if i == j:
-                continue
-            line1_p1 = df1[df1["item"] == i][COORDINATES_COLUMNS]
-            line1_p2 = df2[df2["item"] == i][COORDINATES_COLUMNS]
-            line2_p1 = df1[df1["item"] == j][COORDINATES_COLUMNS]
-            line2_p2 = df2[df2["item"] == j][COORDINATES_COLUMNS]
-            distance_i_j = get_lines_distance(line1_p1, line1_p2, line2_p1, line2_p2)
-            distances[(i, j)] = distance_i_j
+    for i in tqdm(range(len(indices))):
+        for j in range(i + 1, len(indices)):
+            line1 = df[df["item"] == i][COORDINATES_COLUMNS + ['t']]
+            line2 = df[df["item"] == j][COORDINATES_COLUMNS + ['t']]
+            dist_i_j = get_lines_distance(line1, line2)
+            distances[(i, j)] = dist_i_j
     distances_df = pd.DataFrame([[k[0], k[1], distances[k]] for k in distances], columns=["i", "j", "dist"])
     if save_cache:
         distances_df.to_csv(os.path.join(data_processing_dir_prefix, f"cache/{cache_name}.csv"))
@@ -70,6 +86,12 @@ def get_lines_lengths(df1, df2, item_indices=None):
     return line_to_length
 
 
+def get_line_prob(num_neighbors, length):
+    prob = np.log(length + 1) / (2 * (num_neighbors + 0.1))
+    prob = np.minimum(1, prob)
+    return prob
+
+
 def to_show_line(num_neighbors, length):
     prob = np.log(length + 1) / (2 * (num_neighbors + 0.1))
     prob = np.minimum(1, prob)
@@ -77,10 +99,10 @@ def to_show_line(num_neighbors, length):
     return to_show == 1
 
 
-def get_lines_indices_to_show(df, distances_cache_name, dist_threshold=0.05):
+def get_lines_indices_to_show(df, tag_to_id, distances_cache_name, dist_threshold=0.05):
     first_time_step = df[df.t == df.t.min()]
     last_time_step = df[df.t == df.t.max()]
-    lines_distances = get_all_lines_distances(df.item.unique(), first_time_step, last_time_step,
+    lines_distances = get_all_lines_distances(df.item.unique(), df,
                                               cache_name=distances_cache_name)
     line_to_neighbors = get_num_neighbors(lines_distances, items_indices=first_time_step.item.unique(),
                                           dist_threshold=dist_threshold)
@@ -94,9 +116,17 @@ def get_lines_indices_to_show(df, distances_cache_name, dist_threshold=0.05):
         line_to_length[line] /= max_length
 
     lines_indices_to_show = []
-    for line in line_to_neighbors:
-        if to_show_line(num_neighbors=line_to_neighbors[line], length=line_to_length[line]):
-            lines_indices_to_show.append(line)
+    num_lines_per_tag = int((len(line_to_length) * 0.15) / len(tag_to_id))
+    for tag in set(tag_to_id.keys()):
+        tag_probs = []
+        for id in tag_to_id[tag]:
+            prob = get_line_prob(num_neighbors=line_to_neighbors[id], length=line_to_length[id])
+            tag_probs.append((id, prob))
+        tag_mean_prob_goal = num_lines_per_tag / len(tag_to_id[tag])
+        tag_mean_prob = sum([p for _, p in tag_probs]) / len(tag_probs)
+        tag_probs = [(id, min(0.99, p * (tag_mean_prob_goal) / tag_mean_prob)) for (id, p) in tag_probs]
+        lines_indices_to_show.extend([id for (id, p) in tag_probs if np.random.binomial(1, p) == 1])
+    print(lines_indices_to_show)
     return lines_indices_to_show
 
 

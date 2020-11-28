@@ -223,21 +223,21 @@
                     var tailWidth = 6 - (lineLength / 100)
                     if(tailWidth < 3)
                         tailWidth = 3
-                    
+
                     lineGraph.remove()
-                    
+
                     liLineData.push(lineGraph.node())
-                    liTailWidth.push(tailWidth) 
+                    liTailWidth.push(tailWidth)
                 }
             }else{
-                var lineData = []            
-                for(var j = 0; j < steps.length; j ++){                
+                var lineData = []
+                for(var j = 0; j < steps.length; j ++){
                     var c = d3.select('#c_' + liSelectIds[i] + '_' + steps[j])
                     lineData.push({
                         'x': +c.style('cx'),
                         'y': +c.style('cy')
                     })
-                }  
+                }
 
                 var lineGraph = svg.append("path")
                         .datum(lineData)
@@ -246,7 +246,7 @@
                         .style('stroke', 'blue')
                         .style('stroke-width', '4px')
                         .style('fill', 'none');
-            
+
                 var lineLength = getPolyLen(lineData)
                 var tailWidth = 12 - (lineLength / 100)
                 var tailWidth = 6 - (lineLength / 100)
@@ -254,29 +254,55 @@
                     tailWidth = 3
 
                 lineGraph.remove()
-                
+
                 liLineData.push(lineGraph.node())
-                liTailWidth.push(tailWidth) 
+                liTailWidth.push(tailWidth)
             }
 
             for(var j = 0; j < liLineData.length; j ++){
                 var tailWidth = liTailWidth[j]
+                var change_color_time = []
+                for (var p = 0; p < lineData.length; p++) {
+                    part_time = getPolyLen(lineData.slice(0, p + 1))
+                    change_color_time.push(part_time / lineLength)
+                }
                 svg.selectAll(".s_" + liSelectIds[i] + '_' + j)
                 .data(quads(samples(liLineData[j], 0.5)))
                 .enter()
                 .append("path")
                 .attr('class', "s_" + liSelectIds[i] + '_' + j)
-                .style("fill", function(d) { 
+                .style("fill", function(d) {
                     var color_temp = liRColor[+d3.select('#c_' + liSelectIds[i] + '_0').attr('tag')]
                     return color_temp(d.t); })
-                .style("stroke", function(d) {                      
+                .style("stroke", function(d) {
                     var color_temp = liRColor[+d3.select('#c_' + liSelectIds[i] + '_0').attr('tag')]
+                    for (var p = 1; p < lineData.length; p++) {
+                        if (d.t < change_color_time[p]) {
+                            color = (d.t - change_color_time[p-1]) / (change_color_time[p] - change_color_time[p-1])
+                            // color = p / change_color_time.length
+                            break
+                        }
+                        else {
+                            color = 0
+                        }
+                    }
                     return color_temp(d.t); })
-                .attr("d", function(d) { return lineJoin(d[0], d[1], d[2], d[3], tailWidth * (1 - d.t)); });
-            }                       
+                .attr("d", function(d) {
+                    for (var p = 1; p < lineData.length; p++) {
+                        if (d.t < change_color_time[p]) {
+                            t = (d.t - change_color_time[p-1]) / (change_color_time[p] - change_color_time[p-1])
+                            break
+                        }
+                        else {
+                            t = 0
+                        }
+                    }
+                    return lineJoin(d[0], d[1], d[2], d[3], tailWidth * (1 - t));
+                });
+            }
 
         }
-    
+
         //edge bundling
     //     for(var j = 0; j < steps.length - 1; j ++){
     //         var eedges = []

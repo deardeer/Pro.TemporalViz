@@ -27,8 +27,6 @@ def coronavirus_data(filter_options, time_step_indices, china=False):
 		for i, t in enumerate(time_step_indices):
 			lat = data[data['Province/State'] == state]["Lat"].values[0]
 			lon = data[data['Province/State'] == state]["Long"].values[0]
-			# utm_coord1, utm_coord2, _, _ = utm.from_latlon(latitude=lat, longitude=lon)
-			# data_row = [state, utm_coord1, utm_coord2]
 			data_row = [state, lat, lon]
 			time_step = time_steps[t]
 			data_row.append(data[data['Province/State'] == state][time_step].values[0])
@@ -39,6 +37,7 @@ def coronavirus_data(filter_options, time_step_indices, china=False):
 			data_row.append(i)
 			all_data.append(data_row)
 	data_matrix = pd.DataFrame(all_data)
+	data_matrix = data_matrix[data_matrix[0] != "Hubei"]
 	return data_matrix
 
 
@@ -82,11 +81,11 @@ def synthetic_data(id, tags=False, duplicated=False):
 def load_data(data_source, time_steps=None, tags=False):
 	if data_source == "coronavirus_china":
 		if time_steps is None:
-			time_steps = list(range(6))
+			time_steps = list(range(5,12))
 		data = coronavirus_data({"Country/Region": "China"}, time_steps, china=True)
 		data.columns = ['id', 0, 1, 2, 3, 4, 't']
 		data[[3, 4]] *= 20
-		data[[0, 1]] *= 50
+		data[[0, 1]] *= 30
 
 	elif data_source == "coronavirus_us":
 		if time_steps is None:
@@ -99,6 +98,7 @@ def load_data(data_source, time_steps=None, tags=False):
 		if time_steps is None:
 			time_steps = [1960, 1970, 1980, 1990, 2000, 2010]
 		data = population_data(years=time_steps, tags=tags)
+		data.Year = np.abs(5 - data.Year)
 		data.columns = ['item', 'tag', 't', 0, 1, 2] if tags else ['item', 't', 0, 1, 2]
 	elif data_source == "synthetic_1":
 		data = synthetic_data(1, tags)
